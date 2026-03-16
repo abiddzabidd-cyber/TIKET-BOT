@@ -20,7 +20,7 @@ GatewayIntentBits.MessageContent
 ]
 });
 
-const STAFF_ROLE_ID = process.env.STAFF_ROLE_ID;
+const STAFF_ROLE_IDS = process.env.STAFF_ROLE_IDS.split(",");
 const TICKET_CATEGORY_ID = process.env.TICKET_CATEGORY_ID;
 
 const REMINDER_TIME = 600000;
@@ -37,11 +37,8 @@ help:"Butuh Bantuan",
 refund:"Refund",
 ask:"Pertanyaan",
 created:"Tiket berhasil dibuat",
-close:"Tutup Tiket",
-reminderUser:"⏰ Reminder! User belum membalas tiket.",
-reminderStaff:"⏰ Reminder! Staff belum membalas tiket."
+close:"Tutup Tiket"
 },
-
 melayu:{
 panelTitle:"🎫 Panel Tiket",
 panelDesc:"Sila pilih jenis tiket",
@@ -49,11 +46,8 @@ help:"Perlu Bantuan",
 refund:"Pemulangan Wang",
 ask:"Soalan",
 created:"Tiket berjaya dibuat",
-close:"Tutup Tiket",
-reminderUser:"⏰ Pengguna belum membalas tiket",
-reminderStaff:"⏰ Staff belum menjawab tiket"
+close:"Tutup Tiket"
 },
-
 malaysia:{
 panelTitle:"🎫 Panel Tiket",
 panelDesc:"Pilih jenis tiket",
@@ -61,9 +55,7 @@ help:"Perlu Bantuan",
 refund:"Refund",
 ask:"Pertanyaan",
 created:"Tiket berjaya dibuat",
-close:"Tutup Tiket",
-reminderUser:"⏰ Pengguna belum balas tiket",
-reminderStaff:"⏰ Staff belum balas tiket"
+close:"Tutup Tiket"
 }
 };
 
@@ -156,11 +148,7 @@ const user=interaction.user;
 
 if(["help","refund","ask"].includes(interaction.customId)){
 
-const channel=await guild.channels.create({
-name:`ticket-${user.username}`,
-type:ChannelType.GuildText,
-parent:TICKET_CATEGORY_ID,
-permissionOverwrites:[
+let perms=[
 {
 id:guild.id,
 deny:[PermissionsBitField.Flags.ViewChannel]
@@ -171,15 +159,24 @@ allow:[
 PermissionsBitField.Flags.ViewChannel,
 PermissionsBitField.Flags.SendMessages
 ]
-},
-{
-id:STAFF_ROLE_ID,
+}
+];
+
+STAFF_ROLE_IDS.forEach(role=>{
+perms.push({
+id:role,
 allow:[
 PermissionsBitField.Flags.ViewChannel,
 PermissionsBitField.Flags.SendMessages
 ]
-}
-]
+});
+});
+
+const channel=await guild.channels.create({
+name:`ticket-${user.username}`,
+type:ChannelType.GuildText,
+parent:TICKET_CATEGORY_ID,
+permissionOverwrites:perms
 });
 
 const closeRow=new ActionRowBuilder().addComponents(
@@ -189,8 +186,10 @@ new ButtonBuilder()
 .setStyle(ButtonStyle.Danger)
 );
 
+let staffMention = STAFF_ROLE_IDS.map(id=>`<@&${id}>`).join(" ");
+
 await channel.send({
-content:`${user} <@&${STAFF_ROLE_ID}>`,
+content:`${user} ${staffMention}`,
 embeds:[
 new EmbedBuilder()
 .setTitle("Ticket Created")
@@ -208,7 +207,7 @@ if(!ticketActivity[channel.id]) return;
 
 if(Date.now()-ticketActivity[channel.id] > REMINDER_TIME){
 
-channel.send(`<@${user.id}> <@&${STAFF_ROLE_ID}> Reminder tiket belum ada balasan.`);
+channel.send(`⏰ Reminder! ${user} ${staffMention} tiket belum dibalas.`);
 
 ticketActivity[channel.id]=Date.now();
 
