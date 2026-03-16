@@ -1,69 +1,60 @@
 const {
 Client,
 GatewayIntentBits,
-EmbedBuilder,
 ActionRowBuilder,
 ButtonBuilder,
 ButtonStyle,
 ChannelType,
-PermissionsBitField,
-Events
-} = require("discord.js");
-
-require("dotenv").config();
+PermissionsBitField
+} = require("discord.js")
 
 const client = new Client({
-intents:[
+intents: [
 GatewayIntentBits.Guilds,
 GatewayIntentBits.GuildMessages,
 GatewayIntentBits.MessageContent
 ]
-});
+})
 
-const STAFF_ROLE_IDS = process.env.STAFF_ROLE_IDS.split(",");
-const TICKET_CATEGORY_ID = process.env.TICKET_CATEGORY_ID;
+const TOKEN = process.env.TOKEN
+const STAFF_ROLE = process.env.STAFF_ROLE
+const TICKET_CATEGORY = process.env.TICKET_CATEGORY
 
-const REMINDER_TIME = 600000;
+let language = "indonesia"
+let openTickets = new Map()
 
-let language="id";
-
-const ticketActivity={};
-
-const text={
-id:{
-panelTitle:"🎫 Panel Tiket",
-panelDesc:"Silahkan pilih jenis tiket",
-help:"Butuh Bantuan",
-refund:"Refund",
-ask:"Pertanyaan",
-created:"Tiket berhasil dibuat",
-close:"Tutup Tiket"
+const text = {
+indonesia: {
+panel: "Klik tombol untuk membuat tiket",
+created: "Tiket kamu dibuat",
+staffTag: "Staff akan segera membantu",
+staffNoReply: "Staff belum merespon tiket ini",
+userNoReply: "User belum merespon tiket ini",
+close: "Tiket akan ditutup 5 detik"
 },
-melayu:{
-panelTitle:"🎫 Panel Tiket",
-panelDesc:"Sila pilih jenis tiket",
-help:"Perlu Bantuan",
-refund:"Pemulangan Wang",
-ask:"Soalan",
-created:"Tiket berjaya dibuat",
-close:"Tutup Tiket"
+melayu: {
+panel: "Klik butang untuk buat tiket",
+created: "Tiket kamu dibuat",
+staffTag: "Staff akan membantu",
+staffNoReply: "Staff belum balas tiket ini",
+userNoReply: "User belum balas tiket ini",
+close: "Tiket akan ditutup 5 saat"
 },
-malaysia:{
-panelTitle:"🎫 Panel Tiket",
-panelDesc:"Pilih jenis tiket",
-help:"Perlu Bantuan",
-refund:"Refund",
-ask:"Pertanyaan",
-created:"Tiket berjaya dibuat",
-close:"Tutup Tiket"
+malaysia: {
+panel: "Tekan butang untuk buka tiket",
+created: "Tiket anda dibuat",
+staffTag: "Staff akan membantu anda",
+staffNoReply: "Staff belum respon tiket ini",
+userNoReply: "User belum respon tiket ini",
+close: "Tiket akan ditutup dalam 5 saat"
 }
-};
+}
 
-client.once("ready",async()=>{
+client.once("ready", async () => {
 
-console.log(`Bot online ${client.user.tag}`);
+console.log(`Bot online ${client.user.tag}`)
 
-const guild=client.guilds.cache.first();
+const guild = client.guilds.cache.first()
 
 await guild.commands.set([
 {
@@ -76,7 +67,7 @@ description: "Ubah bahasa bot",
 options: [
 {
 name: "bahasa",
-description: "Pilih bahasa bot",
+description: "Pilih bahasa",
 type: 3,
 required: true,
 choices: [
@@ -87,158 +78,120 @@ choices: [
 }
 ]
 }
-]);
+])
 
-client.on(Events.InteractionCreate,async interaction=>{
+})
 
-if(interaction.isChatInputCommand()){
+client.on("interactionCreate", async interaction => {
 
-if(interaction.commandName==="panel"){
+if (interaction.isChatInputCommand()) {
 
-const embed=new EmbedBuilder()
-.setTitle(text[language].panelTitle)
-.setDescription(text[language].panelDesc)
-.setColor("Blue");
+if (interaction.commandName === "panel") {
 
-const row=new ActionRowBuilder().addComponents(
-
+const row = new ActionRowBuilder().addComponents(
 new ButtonBuilder()
-.setCustomId("help")
-.setLabel(text[language].help)
-.setStyle(ButtonStyle.Primary),
+.setCustomId("create_ticket")
+.setLabel("🎫 Buat Tiket")
+.setStyle(ButtonStyle.Primary)
+)
 
-new ButtonBuilder()
-.setCustomId("refund")
-.setLabel(text[language].refund)
-.setStyle(ButtonStyle.Secondary),
-
-new ButtonBuilder()
-.setCustomId("ask")
-.setLabel(text[language].ask)
-.setStyle(ButtonStyle.Success)
-
-);
-
-interaction.reply({
-embeds:[embed],
-components:[row]
-});
+await interaction.reply({
+content: text[language].panel,
+components: [row]
+})
 
 }
 
-if(interaction.commandName==="setlang"){
+if (interaction.commandName === "setlang") {
 
-const lang=interaction.options.getString("bahasa");
+language = interaction.options.getString("bahasa")
 
-if(lang==="indonesia") language="id";
-if(lang==="melayu") language="melayu";
-if(lang==="malaysia") language="malaysia";
-
-interaction.reply("Bahasa berhasil diubah");
+await interaction.reply({
+content: `Bahasa diubah ke **${language}**`
+})
 
 }
 
 }
 
-if(interaction.isButton()){
+if (interaction.isButton()) {
 
-const guild=interaction.guild;
-const user=interaction.user;
+if (interaction.customId === "create_ticket") {
 
-if(["help","refund","ask"].includes(interaction.customId)){
+if (openTickets.has(interaction.user.id)) {
+return interaction.reply({
+content: "Kamu sudah punya tiket",
+ephemeral: true
+})
+}
 
-let perms=[
+const channel = await interaction.guild.channels.create({
+name: `ticket-${interaction.user.username}`,
+type: ChannelType.GuildText,
+parent: TICKET_CATEGORY,
+permissionOverwrites: [
 {
-id:guild.id,
-deny:[PermissionsBitField.Flags.ViewChannel]
+id: interaction.guild.id,
+deny: [PermissionsBitField.Flags.ViewChannel]
 },
 {
-id:user.id,
-allow:[
+id: interaction.user.id,
+allow: [
+PermissionsBitField.Flags.ViewChannel,
+PermissionsBitField.Flags.SendMessages
+]
+},
+{
+id: STAFF_ROLE,
+allow: [
 PermissionsBitField.Flags.ViewChannel,
 PermissionsBitField.Flags.SendMessages
 ]
 }
-];
-
-STAFF_ROLE_IDS.forEach(role=>{
-perms.push({
-id:role,
-allow:[
-PermissionsBitField.Flags.ViewChannel,
-PermissionsBitField.Flags.SendMessages
 ]
-});
-});
+})
 
-const channel=await guild.channels.create({
-name:`ticket-${user.username}`,
-type:ChannelType.GuildText,
-parent:TICKET_CATEGORY_ID,
-permissionOverwrites:perms
-});
+openTickets.set(interaction.user.id, channel.id)
 
-const closeRow=new ActionRowBuilder().addComponents(
+const closeRow = new ActionRowBuilder().addComponents(
 new ButtonBuilder()
-.setCustomId("close")
-.setLabel(text[language].close)
+.setCustomId("close_ticket")
+.setLabel("🔒 Close Ticket")
 .setStyle(ButtonStyle.Danger)
-);
-
-let staffMention = STAFF_ROLE_IDS.map(id=>`<@&${id}>`).join(" ");
+)
 
 await channel.send({
-content:`${user} ${staffMention}`,
-embeds:[
-new EmbedBuilder()
-.setTitle("Ticket Created")
-.setDescription(`Kategori: ${interaction.customId}`)
-.setColor("Green")
-],
-components:[closeRow]
-});
-
-ticketActivity[channel.id]=Date.now();
-
-setInterval(()=>{
-
-if(!ticketActivity[channel.id]) return;
-
-if(Date.now()-ticketActivity[channel.id] > REMINDER_TIME){
-
-channel.send(`⏰ Reminder! ${user} ${staffMention} tiket belum dibalas.`);
-
-ticketActivity[channel.id]=Date.now();
-
-}
-
-},REMINDER_TIME);
+content: `<@${interaction.user.id}> <@&${STAFF_ROLE}>\n${text[language].staffTag}`,
+components: [closeRow]
+})
 
 interaction.reply({
-content:text[language].created,
-ephemeral:true
-});
+content: `${text[language].created}: ${channel}`,
+ephemeral: true
+})
+
+setTimeout(() => {
+channel.send(`<@&${STAFF_ROLE}> ${text[language].staffNoReply}`)
+}, 300000)
+
+setTimeout(() => {
+channel.send(`<@${interaction.user.id}> ${text[language].userNoReply}`)
+}, 600000)
 
 }
 
-if(interaction.customId==="close"){
+if (interaction.customId === "close_ticket") {
 
-delete ticketActivity[interaction.channel.id];
+await interaction.channel.send(text[language].close)
 
-interaction.channel.delete();
+setTimeout(() => {
+interaction.channel.delete()
+}, 5000)
 
 }
 
 }
 
-});
+})
 
-client.on("messageCreate",(msg)=>{
-
-if(!msg.channel.name.startsWith("ticket-")) return;
-
-ticketActivity[msg.channel.id]=Date.now();
-
-});
-
-client.login(process.env.TOKEN);
+client.login(TOKEN)
