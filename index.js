@@ -68,36 +68,30 @@ if(!guild){
 console.log("Guild tidak ditemukan");
 return;
 }
-
+ 
 await guild.commands.set([
 {
-name:"panel",
-description:"Kirim panel tiket"
+name: "panel",
+description: "Kirim panel tiket"
 },
 {
-name:"setlang",
-description:"Ubah bahasa",
-options:[
- {
 name: "setlang",
 description: "Ubah bahasa bot",
 options: [
 {
-type: 3,
 name: "bahasa",
 description: "Pilih bahasa bot",
+type: 3,
 required: true,
 choices: [
-{name:"indonesia",value:"indonesia"},
-{name:"melayu",value:"melayu"},
-{name:"malaysia",value:"malaysia"}
+{ name: "indonesia", value: "indonesia" },
+{ name: "melayu", value: "melayu" },
+{ name: "malaysia", value: "malaysia" }
 ]
 }
 ]
 }
 ]);
-
-});
 
 client.on(Events.InteractionCreate,async interaction=>{
 
