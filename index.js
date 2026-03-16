@@ -58,12 +58,16 @@ created:"Tiket berjaya dibuat",
 close:"Tutup Tiket"
 }
 };
-
-client.once("ready",async()=>{
+client.once("ready", async () => {
 
 console.log(`Bot online ${client.user.tag}`);
 
-const guild=client.guilds.cache.first();
+const guild = client.guilds.cache.get(process.env.GUILD_ID);
+
+if(!guild){
+console.log("Guild tidak ditemukan");
+return;
+}
 
 await guild.commands.set([
 {
