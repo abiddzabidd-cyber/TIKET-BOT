@@ -5,50 +5,19 @@ ActionRowBuilder,
 ButtonBuilder,
 ButtonStyle,
 ChannelType,
-PermissionsBitField
+PermissionsBitField,
+EmbedBuilder
 } = require("discord.js")
 
 const client = new Client({
-intents: [
-GatewayIntentBits.Guilds,
-GatewayIntentBits.GuildMessages,
-GatewayIntentBits.MessageContent
-]
+intents: [GatewayIntentBits.Guilds]
 })
 
 const TOKEN = process.env.TOKEN
-const STAFF_ROLE = process.env.STAFF_ROLE
+const OWNER_ID = process.env.OWNER_ID
 const TICKET_CATEGORY = process.env.TICKET_CATEGORY
 
-let language = "indonesia"
 let openTickets = new Map()
-
-const text = {
-indonesia: {
-panel: "Klik tombol untuk membuat tiket",
-created: "Tiket kamu dibuat",
-staffTag: "Staff akan segera membantu",
-staffNoReply: "Staff belum merespon tiket ini",
-userNoReply: "User belum merespon tiket ini",
-close: "Tiket akan ditutup 5 detik"
-},
-melayu: {
-panel: "Klik butang untuk buat tiket",
-created: "Tiket kamu dibuat",
-staffTag: "Staff akan membantu",
-staffNoReply: "Staff belum balas tiket ini",
-userNoReply: "User belum balas tiket ini",
-close: "Tiket akan ditutup 5 saat"
-},
-malaysia: {
-panel: "Tekan butang untuk buka tiket",
-created: "Tiket anda dibuat",
-staffTag: "Staff akan membantu anda",
-staffNoReply: "Staff belum respon tiket ini",
-userNoReply: "User belum respon tiket ini",
-close: "Tiket akan ditutup dalam 5 saat"
-}
-}
 
 client.once("ready", async () => {
 
@@ -62,19 +31,26 @@ name: "panel",
 description: "Kirim panel tiket"
 },
 {
-name: "setlang",
-description: "Ubah bahasa bot",
+name: "add",
+description: "Tambah user ke tiket",
 options: [
 {
-name: "bahasa",
-description: "Pilih bahasa",
-type: 3,
-required: true,
-choices: [
-{ name: "indonesia", value: "indonesia" },
-{ name: "melayu", value: "melayu" },
-{ name: "malaysia", value: "malaysia" }
+name: "user",
+description: "User yang ingin ditambahkan",
+type: 6,
+required: true
+}
 ]
+},
+{
+name: "remove",
+description: "Hapus user dari tiket",
+options: [
+{
+name: "user",
+description: "User yang ingin dihapus",
+type: 6,
+required: true
 }
 ]
 }
@@ -88,27 +64,77 @@ if (interaction.isChatInputCommand()) {
 
 if (interaction.commandName === "panel") {
 
-const row = new ActionRowBuilder().addComponents(
-new ButtonBuilder()
-.setCustomId("create_ticket")
-.setLabel("🎫 Buat Tiket")
-.setStyle(ButtonStyle.Primary)
+const embed = new EmbedBuilder()
+.setColor(0xFFD700)
+.setTitle("🎫 SISTEM SUPPORT TIKET")
+.setDescription(
+"Selamat datang di **Customer Support Server**.\n\n"+
+"Jika kamu mengalami masalah, ingin bertanya, melakukan refund, atau membuat order baru, kamu bisa membuat tiket support.\n\n"+
+"Staff kami akan membantu kamu secepat mungkin.\n\n"+
+"📌 **Peraturan Tiket**\n"+
+"• Jangan spam tiket\n"+
+"• Jelaskan masalah dengan jelas\n"+
+"• Tunggu staff membalas\n\n"+
+"Silakan pilih kategori tiket di bawah."
 )
 
-await interaction.reply({
-content: text[language].panel,
-components: [row]
+const row = new ActionRowBuilder().addComponents(
+
+new ButtonBuilder()
+.setCustomId("bantuan")
+.setLabel("🛠 Bantuan")
+.setStyle(ButtonStyle.Primary),
+
+new ButtonBuilder()
+.setCustomId("refund")
+.setLabel("💰 Refund")
+.setStyle(ButtonStyle.Success),
+
+new ButtonBuilder()
+.setCustomId("pertanyaan")
+.setLabel("❓ Pertanyaan")
+.setStyle(ButtonStyle.Secondary),
+
+new ButtonBuilder()
+.setCustomId("order")
+.setLabel("📦 Order")
+.setStyle(ButtonStyle.Danger)
+
+)
+
+interaction.reply({
+embeds:[embed],
+components:[row]
 })
 
 }
 
-if (interaction.commandName === "setlang") {
+if (interaction.commandName === "add") {
 
-language = interaction.options.getString("bahasa")
+if (interaction.user.id !== OWNER_ID)
+return interaction.reply({content:"❌ Hanya owner",ephemeral:true})
 
-await interaction.reply({
-content: `Bahasa diubah ke **${language}**`
+const user = interaction.options.getUser("user")
+
+await interaction.channel.permissionOverwrites.edit(user.id,{
+ViewChannel:true,
+SendMessages:true
 })
+
+interaction.reply(`✅ ${user} ditambahkan ke tiket`)
+
+}
+
+if (interaction.commandName === "remove") {
+
+if (interaction.user.id !== OWNER_ID)
+return interaction.reply({content:"❌ Hanya owner",ephemeral:true})
+
+const user = interaction.options.getUser("user")
+
+await interaction.channel.permissionOverwrites.delete(user.id)
+
+interaction.reply(`❌ ${user} dihapus dari tiket`)
 
 }
 
@@ -116,34 +142,37 @@ content: `Bahasa diubah ke **${language}**`
 
 if (interaction.isButton()) {
 
-if (interaction.customId === "create_ticket") {
+if (
+interaction.customId === "bantuan" ||
+interaction.customId === "refund" ||
+interaction.customId === "pertanyaan" ||
+interaction.customId === "order"
+){
 
-if (openTickets.has(interaction.user.id)) {
-return interaction.reply({
-content: "Kamu sudah punya tiket",
-ephemeral: true
-})
-}
+await interaction.deferReply({ephemeral:true})
+
+if(openTickets.has(interaction.user.id))
+return interaction.editReply("❌ Kamu sudah punya tiket")
 
 const channel = await interaction.guild.channels.create({
-name: `ticket-${interaction.user.username}`,
-type: ChannelType.GuildText,
-parent: TICKET_CATEGORY,
-permissionOverwrites: [
+name:`${interaction.customId}-${interaction.user.username}`,
+type:ChannelType.GuildText,
+parent:TICKET_CATEGORY,
+permissionOverwrites:[
 {
-id: interaction.guild.id,
-deny: [PermissionsBitField.Flags.ViewChannel]
+id:interaction.guild.id,
+deny:[PermissionsBitField.Flags.ViewChannel]
 },
 {
-id: interaction.user.id,
-allow: [
+id:interaction.user.id,
+allow:[
 PermissionsBitField.Flags.ViewChannel,
 PermissionsBitField.Flags.SendMessages
 ]
 },
 {
-id: STAFF_ROLE,
-allow: [
+id:OWNER_ID,
+allow:[
 PermissionsBitField.Flags.ViewChannel,
 PermissionsBitField.Flags.SendMessages
 ]
@@ -151,42 +180,31 @@ PermissionsBitField.Flags.SendMessages
 ]
 })
 
-openTickets.set(interaction.user.id, channel.id)
+openTickets.set(interaction.user.id,channel.id)
 
-const closeRow = new ActionRowBuilder().addComponents(
+const row = new ActionRowBuilder().addComponents(
 new ButtonBuilder()
 .setCustomId("close_ticket")
 .setLabel("🔒 Close Ticket")
 .setStyle(ButtonStyle.Danger)
 )
 
-await channel.send({
-content: `<@${interaction.user.id}> <@&${STAFF_ROLE}>\n${text[language].staffTag}`,
-components: [closeRow]
+channel.send({
+content:`<@${interaction.user.id}> <@${OWNER_ID}> tiket dibuat`,
+components:[row]
 })
 
-interaction.reply({
-content: `${text[language].created}: ${channel}`,
-ephemeral: true
-})
-
-setTimeout(() => {
-channel.send(`<@&${STAFF_ROLE}> ${text[language].staffNoReply}`)
-}, 300000)
-
-setTimeout(() => {
-channel.send(`<@${interaction.user.id}> ${text[language].userNoReply}`)
-}, 600000)
+interaction.editReply(`✅ Tiket dibuat: ${channel}`)
 
 }
 
-if (interaction.customId === "close_ticket") {
+if(interaction.customId==="close_ticket"){
 
-await interaction.channel.send(text[language].close)
+interaction.channel.send("🔒 Tiket akan ditutup dalam 5 detik")
 
-setTimeout(() => {
-interaction.channel.delete()
-}, 5000)
+setTimeout(()=>{
+interaction.channel.delete().catch(()=>{})
+},5000)
 
 }
 
