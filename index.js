@@ -78,18 +78,23 @@ description:"Kirim panel tiket"
 name:"setlang",
 description:"Ubah bahasa",
 options:[
+ {
+name: "setlang",
+description: "Ubah bahasa bot",
+options: [
 {
-name:"bahasa",
-type:3,
-required:true,
-choices:[
+type: 3,
+name: "bahasa",
+description: "Pilih bahasa bot",
+required: true,
+choices: [
 {name:"indonesia",value:"indonesia"},
 {name:"melayu",value:"melayu"},
 {name:"malaysia",value:"malaysia"}
 ]
 }
 ]
-}
+} { { {
 ]);
 
 });
