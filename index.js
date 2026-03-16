@@ -58,40 +58,37 @@ created:"Tiket berjaya dibuat",
 close:"Tutup Tiket"
 }
 };
-client.once("ready", async () => {
+
+client.once("ready",async()=>{
 
 console.log(`Bot online ${client.user.tag}`);
 
-const guild = client.guilds.cache.get(process.env.GUILD_ID);
+const guild=client.guilds.cache.first();
 
-if(!guild){
-console.log("Guild tidak ditemukan");
-return;
-}
- 
 await guild.commands.set([
 {
-name: "panel",
-description: "Kirim panel tiket"
+name:"panel",
+description:"Kirim panel tiket"
 },
 {
-name: "setlang",
-description: "Ubah bahasa bot",
-options: [
+name:"setlang",
+description:"Ubah bahasa",
+options:[
 {
-name: "bahasa",
-description: "Pilih bahasa bot",
-type: 3,
-required: true,
-choices: [
-{ name: "indonesia", value: "indonesia" },
-{ name: "melayu", value: "melayu" },
-{ name: "malaysia", value: "malaysia" }
+name:"bahasa",
+type:3,
+required:true,
+choices:[
+{name:"indonesia",value:"indonesia"},
+{name:"melayu",value:"melayu"},
+{name:"malaysia",value:"malaysia"}
 ]
 }
 ]
 }
 ]);
+
+});
 
 client.on(Events.InteractionCreate,async interaction=>{
 
