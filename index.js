@@ -67,28 +67,27 @@ const guild=client.guilds.cache.first();
 
 await guild.commands.set([
 {
-name:"panel",
-description:"Kirim panel tiket"
+name: "panel",
+description: "Kirim panel tiket"
 },
 {
-name:"setlang",
-description:"Ubah bahasa",
-options:[
+name: "setlang",
+description: "Ubah bahasa bot",
+options: [
 {
-name:"bahasa",
-type:3,
-required:true,
-choices:[
-{name:"indonesia",value:"indonesia"},
-{name:"melayu",value:"melayu"},
-{name:"malaysia",value:"malaysia"}
+name: "bahasa",
+description: "Pilih bahasa bot",
+type: 3,
+required: true,
+choices: [
+{ name: "indonesia", value: "indonesia" },
+{ name: "melayu", value: "melayu" },
+{ name: "malaysia", value: "malaysia" }
 ]
 }
 ]
 }
 ]);
-
-});
 
 client.on(Events.InteractionCreate,async interaction=>{
 
